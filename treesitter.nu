@@ -11,20 +11,6 @@ export def "read ranges" [file: path]: table<srow: int, scol: int, erow: int, ec
 	}
 }
 
-# visit visits each node in the given xml tree
-export def visit [visitor: closure]: record<tag: oneof<string, nothing>, attributes: oneof<record, nothing>, content: oneof<string, table>> -> list {
-	let node = $in
-	let res = $node | do $visitor
-	let children = if ($node.content | describe) != string {
-		$node.content
-			| each {|child| $child | visit $visitor }
-			| flatten
-	} else {
-		[]
-	}
-	[$res] ++ $children
-}
-
 # range of returns the range of a node
 export def "range of" []: record<tag: oneof<string, nothing>, attributes: oneof<record, nothing>, content: oneof<string, table>> -> oneof<nothing, record<srow: int, scol: int, erow: int, ecol: int>> {
 	let range = try { $in.attributes | select srow scol erow ecol } catch { null }
