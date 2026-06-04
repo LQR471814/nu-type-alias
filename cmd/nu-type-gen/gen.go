@@ -15,7 +15,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 	"unsafe"
 
 	"nu-type-alias/cmd/nu-type-gen/tsquery"
@@ -323,7 +322,7 @@ func NewGenerator(include iter.Seq[string]) (gen *Generator, err error) {
 		Files:  make(map[string]File),
 		parser: parser,
 	}
-	for _, path := range include {
+	for path := range include {
 		path, err = filepath.Abs(path)
 		if err != nil {
 			return
@@ -411,28 +410,15 @@ func isBuiltinType(id []string) bool {
 }
 
 func (g *Generator) Generate() (err error) {
-	var errMutex sync.Mutex{}
-	var errs []error
-
-	wg := sync.WaitGroup{}
-	wg.Add(len(g.Files))
-
 	for path, file := range g.Files {
-		defer func() {
-			defer wg.Done()
-			f, err := os.Create(path)
-			if err != nil {
-				errMutex.Lock()
-				errs = append(errs, err)
-				errMutex.Unlock()
-				return
-			}
-			defer f.Close()
-			file.Generate(f)
-		}()
+		var f *os.File
+		f, err = os.Create(path)
+		if err != nil {
+			return
+		}
+		file.Generate(f)
+		f.Close()
 	}
-
-	wg.Wait()
 	return
 }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"iter"
 	"log"
@@ -13,6 +14,7 @@ func linesIter(r io.Reader) iter.Seq[string] {
 		// reads included file paths via stdin to get around CLI max length
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
+			fmt.Println(scanner.Text())
 			if !yield(scanner.Text()) {
 				break
 			}
@@ -26,6 +28,8 @@ func main() {
 		log.Fatal(err)
 	}
 	defer gen.Close()
+
+	fmt.Println("generating...")
 
 	err = gen.Generate()
 	if err != nil {

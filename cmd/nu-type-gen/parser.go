@@ -35,13 +35,13 @@ func (c VarTypeAnnot) TargetRange() tsquery.ByteRange {
 	id := c.Var.ChildByFieldName("var_name")
 	_, idEnd := id.ByteRange()
 
-	start := idEnd + 1
-	end := start + 1
+	start := idEnd
+	end := start
 
 	value := c.Var.ChildByFieldName("value")
 	if value != nil {
 		valueStart, _ := value.ByteRange()
-		end = valueStart - 1
+		end = valueStart - 3
 	}
 
 	return tsquery.NewByteRange(start, end)
@@ -78,7 +78,7 @@ func (c CmdTypeAnnot) IOTargetRange() tsquery.ByteRange {
 	}
 	_, paramsEnd := c.Cmd.ChildByFieldName("parameters").ByteRange()
 	bodyStart, _ := c.Cmd.ChildByFieldName("body").ByteRange()
-	start := paramsEnd + 1
+	start := paramsEnd
 	end := bodyStart - 1
 	return tsquery.NewByteRange(start, end)
 }
