@@ -13,7 +13,7 @@ def run-test [type: string]: string -> nothing {
 
 "type foo = int" | run-test type_decl
 
-"export type foo = list<record<int>>" | run-test type_decl
+"export type foo = list<list<int>>" | run-test type_decl
 
 "type Foo = table<
 	id: int,
@@ -33,11 +33,13 @@ def run-test [type: string]: string -> nothing {
 "@output any" | run-test stmt
 "@param arg string" | run-test stmt
 
+'@usetype "mod.nu"' | run-test stmt
+
 "export type PERT<T> = record<opt: T, pes: T, exp: T>
 type Foo = table<
 	id: int,
 	pert: PERT<int>,
-	name: string
+	name: custom.mod
 >
 
 @type Foo" | run-test block

@@ -11,7 +11,7 @@ package grammar
 import "github.com/alecthomas/participle/v2"
 
 type TypeExpr struct {
-	ID   string    `@Ident`
+	ID   []string  `@Ident ("." @Ident)?`
 	Args []TypeArg `("<" (@@ ","?)+ ">")?`
 }
 
@@ -25,6 +25,11 @@ type TypeDecl struct {
 	ID       string   `@Ident`
 	Generics []string `("<" (@Ident ","?) ">")?`
 	Type     TypeExpr `"=" @@`
+}
+
+type UseDecl struct {
+	Delim    struct{} `"@" "usetype"`
+	Filename string   `@String`
 }
 
 type ParamTypeAnnotation struct {
@@ -57,6 +62,7 @@ func (InputTypeAnnotation) stmt()  {}
 func (OutputTypeAnnotation) stmt() {}
 func (VarTypeAnnot) stmt()         {}
 func (TypeDecl) stmt()             {}
+func (UseDecl) stmt()              {}
 
 var StmtUnion = participle.Union[Stmt](
 	InputTypeAnnotation{},
@@ -64,6 +70,7 @@ var StmtUnion = participle.Union[Stmt](
 	ParamTypeAnnotation{},
 	VarTypeAnnot{},
 	TypeDecl{},
+	UseDecl{},
 )
 
 type Block struct {
