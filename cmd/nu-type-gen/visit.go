@@ -1,33 +1,21 @@
 package main
 
-import tree_sitter "github.com/tree-sitter/go-tree-sitter"
+import (
+	"nu-type-alias/cmd/nu-type-gen/tsquery"
 
-type ByteRange struct {
-	Start uint
-	End   uint
-}
-
-func NewByteRange(start, end uint) ByteRange {
-	return ByteRange{
-		Start: start,
-		End:   end,
-	}
-}
-
-func (r ByteRange) GetString(buff []byte) string {
-	return string(buff[r.Start:r.End])
-}
+	tree_sitter "github.com/tree-sitter/go-tree-sitter"
+)
 
 type nodeVisitor interface {
-	VisitLoneComment(span ByteRange)
-	VisitCmdComment(span ByteRange, cmd *tree_sitter.Node)
-	VisitVarComment(span ByteRange, variable *tree_sitter.Node)
+	VisitLoneComment(span tsquery.ByteRange)
+	VisitCmdComment(span tsquery.ByteRange, cmd *tree_sitter.Node)
+	VisitVarComment(span tsquery.ByteRange, variable *tree_sitter.Node)
 }
 
 func visitComments(node *tree_sitter.Node, cursor *tree_sitter.TreeCursor, visitor nodeVisitor) {
 	children := node.Children(cursor)
 
-	var startComment *ByteRange
+	var startComment *tsquery.ByteRange
 	for i, child := range children {
 		visitComments(&child, cursor, visitor)
 
@@ -36,7 +24,7 @@ func visitComments(node *tree_sitter.Node, cursor *tree_sitter.TreeCursor, visit
 			continue
 		}
 
-		totalRange := NewByteRange(child.ByteRange())
+		totalRange := tsquery.NewByteRange(child.ByteRange())
 
 		if startComment == nil {
 			startComment = &totalRange
@@ -52,9 +40,9 @@ func visitComments(node *tree_sitter.Node, cursor *tree_sitter.TreeCursor, visit
 		next := children[i+1]
 		switch next.GrammarName() {
 		case "decl_def":
-			visitor.VisitCmdComment(totalRange, next)
+			visitor.VisitCmdComment(totalRange, &next)
 		case "stmt_let", "stmt_mut":
-			visitor.VisitVarComment(totalRange, next)
+			visitor.VisitVarComment(totalRange, &next)
 		}
 	}
 }

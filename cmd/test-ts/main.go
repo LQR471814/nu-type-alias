@@ -52,5 +52,8 @@ func main() {
 	tree := parser.Parse([]byte(code), nil)
 	defer tree.Close()
 
+	walker := tree.Walk()
+	defer walker.Close()
+
 	fmt.Println(tree.RootNode().ToSexp())
 }

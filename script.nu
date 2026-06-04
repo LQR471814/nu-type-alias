@@ -3,8 +3,12 @@
 # @input nothing
 # @output any
 # @param arg string
-export def "command name" [arg: string]: nothing -> any {
+export def "command name" [arg: string,    name: string, --short: int, --flag(-f): int]: nothing -> any {
 	echo "hello"
+}
+
+def cmd [foo bar:int]   {
+
 }
 
 command name
@@ -20,3 +24,4 @@ command name
 let x = []
 
 mut y = 4
+
