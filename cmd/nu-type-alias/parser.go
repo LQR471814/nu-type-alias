@@ -198,6 +198,9 @@ func (v *AnnotationVisitor) VisitClosureHeader(span tsquery.ByteRange, closure *
 			v.UseDecls = append(v.UseDecls, stmt)
 		case grammar.TypeDecl:
 			v.TypeDecls = append(v.TypeDecls, stmt)
+		case grammar.VarTypeAnnot:
+			// we do nothing here because VarTypeComment will be picked up by
+			// VisitVarComment later
 		default:
 			panic(fmt.Errorf("got unexpected statement %T", stmt))
 		}
