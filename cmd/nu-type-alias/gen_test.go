@@ -9,7 +9,7 @@ import (
 
 func TestGenerator(t *testing.T) {
 	gen, err := NewGenerator(slices.Values([]string{
-		"./test/foo.nu",
+		"./test/foo.api.nu",
 		"./test/bar.nu",
 	}))
 	if err != nil {
