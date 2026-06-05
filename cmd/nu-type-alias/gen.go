@@ -47,8 +47,9 @@ func (file File) resolveModule(mod string) (resolved File, err error) {
 	relPath, modExist := file.UseDecls[mod]
 	if !modExist {
 		err = fmt.Errorf(
-			"type module %v has not been declared",
+			"type module %v has not been declared (%v)",
 			mod,
+			file.UseDecls,
 		)
 		return
 	}
