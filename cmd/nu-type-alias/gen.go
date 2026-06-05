@@ -166,9 +166,7 @@ func (file File) genParamAnnots(params []tree_sitter.Node, annots ParamTypeAnnot
 
 func (file File) genCmdParamAnnots(c CmdTypeAnnot, w *skipWriter) {
 	cmdNode := tsquery.CommandNode{Node: c.Cmd}
-	cmdName := cmdNode.GetName(file.Code)
 	params := cmdNode.GetParameters(file.treeCursor)
-
 	file.genParamAnnots(params, c.Params, w)
 }
 
