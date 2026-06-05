@@ -218,6 +218,8 @@ func (file File) Generate(out io.Writer) (err error) {
 	defer func() {
 		recovered := recover()
 		switch recovered := recovered.(type) {
+		case nil:
+			err = nil
 		case error:
 			err = recovered
 		default:
@@ -435,14 +437,10 @@ func (g *Generator) genFile(path string, file File) (err error) {
 
 	err = file.Generate(f)
 	if err != nil {
-		err = f.Truncate(0)
-		if err != nil {
-			return
-		}
-		_, err = f.Write(file.Code)
-		if err != nil {
-			return
-		}
+		f.Truncate(0)
+		f.Seek(0, 0)
+		f.Write(file.Code)
+		return
 	}
 
 	return
