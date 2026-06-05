@@ -146,3 +146,24 @@ filename, minus `.nu` and all special characters and whitespace.
 > Unlike the `use` keyword, you must put double quotes around the
 > filename of `@usetype` otherwise a silent failure may occur!
 
+## CLI
+
+Run the `nu-type-alias` binary with a list of paths to nushell
+files to be included separated by newline.
+
+The following is a common pattern, it will include all nushell
+files under the current directory.
+
+```nu
+ls **/*.nu
+	| get name
+	| str join "\n"
+	| nu-type-alias
+```
+
+> [!NOTE]
+> Not including certain files will cause those files to "cease to
+> exist" in the eyes of the code mod, including those imported via
+> `@usetype`. Therefore, all files that have anything to do with
+> type aliases must be included.
+
