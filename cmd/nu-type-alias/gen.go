@@ -229,10 +229,6 @@ func (file File) Generate(out io.Writer) (err error) {
 	// here, we use skipWriter to skip over ranges of old code while writing
 	w := newSkipWriter(file.Code, out)
 
-	for _, annot := range file.Annots {
-		fmt.Printf("%T\n", annot)
-	}
-
 	for _, an := range file.Annots {
 		switch an := an.(type) {
 		case CmdTypeAnnot:
