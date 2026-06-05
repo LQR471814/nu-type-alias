@@ -85,7 +85,6 @@ To reference types from other files imported via `@usetype` you
 **must** use a qualified name where the name is given by the
 filename, minus `.nu` and all special characters and whitespace.
 
-> [!EXAMPLE]
 > `this-is a module.gen.nu` $\to$ `thisisamodulegen`
 
 > [!IMPORTANT]
