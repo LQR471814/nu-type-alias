@@ -1,4 +1,4 @@
-# @usetype "foo.nu"
+# @usetype "foo.api.nu"
 
-# @type foo.PERT<string>
+# @type fooapi.PERT<string>
 let x = {}
