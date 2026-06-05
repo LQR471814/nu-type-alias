@@ -30,6 +30,13 @@ let res = {}
 
 # --- output (modified in-place)
 
+# type Entry = record<id: int, name: string>
+# type Response = record<
+#   time: timestamp,
+#   entries: oneof<list<Entry>, nothing>,
+#   first: oneof<Entry, nothing>
+# >
+
 # @type Response
 let res: record<time: timestamp, entries: oneof<list<record<id: int, name: string>>, nothing>, first: oneof<record<id: int, name: string>, nothing>> = {}
 ```
