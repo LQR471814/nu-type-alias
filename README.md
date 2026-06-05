@@ -22,10 +22,14 @@ newlines can be used between type arguments.
 You can declare a variable's type with the syntax `@type`.
 
 ```nu
+## before
+
 # @type Range<int>
 let foo = {min: 34, max: 70}
 
-# becomes
+## after
+
+# @type Range<int>
 let foo: record<min: int, max: int> = {min: 34, max: 70}
 ```
 
@@ -41,6 +45,8 @@ a command using:
 - `@param {param} {type_expr}`
 
 ```nu
+## before
+
 # type PadCfg = record<left: bool, right: bool>
 #
 # @input Range<number>
@@ -48,7 +54,13 @@ a command using:
 # @param pad PadCfg
 def format [--pad] { ... }
 
-# becomes
+## after
+
+# type PadCfg = record<left: bool, right: bool>
+#
+# @input Range<number>
+# @output string
+# @param pad PadCfg
 def format [--pad: record<left: bool, right: bool>]: record<min: number, max: number> -> string {
     ...
 }
@@ -74,10 +86,14 @@ Types can also be exported and imported from files using the
 
 # @usetype "foo.nu"
 
+## before
+
 # @type list<foo.File>
 let files = []
 
-# becomes
+## after
+
+# @type list<foo.File>
 let files: list<record<name: string, isdir: bool, children: list<string>>> = []
 ```
 
