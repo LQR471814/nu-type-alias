@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"nu-type-alias/internal/tsquery"
 
 	tree_sitter "github.com/tree-sitter/go-tree-sitter"
@@ -19,16 +18,12 @@ func visitClosure(node *tree_sitter.Node, cursor *tree_sitter.TreeCursor, visito
 		panic("assert failed: visitClosure must be called with node.GrammarName == val_closure")
 	}
 	// we capture the range of comments at the start of a closure
-	// if there are none, we simply visit the rest of the children
 	named := node.NamedChildren(cursor)
-	if named[0].GrammarName() != "parameter_pipes" {
-		panic(fmt.Errorf(
-			"assert failed: first named child of closure must be 'parameter_pipes' got '%v'",
-			named[0].GrammarName(),
-		))
+	if named[0].GrammarName() == "parameter_pipes" {
+		named = named[1:]
 	}
 	var span *tsquery.ByteRange
-	for _, child := range named[1:] {
+	for _, child := range named {
 		if child.GrammarName() != "comment" {
 			break
 		}
