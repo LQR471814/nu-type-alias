@@ -37,16 +37,10 @@
 
       apps.${system}.default = {
         type = "app";
-        program = "${self.packages.${system}.default}/bin/myapp";
+        program = "${self.packages.${system}.default}/bin/nu-type-alias";
       };
 
       devShells.${system}.default = pkgs.mkShell {
-        packages = [
-          pkgs.go
-          pkgs.gopls
-          pkgs.gotools
-        ];
-
         shellHook = ''
           export CGO_ENABLED=1
         '';
