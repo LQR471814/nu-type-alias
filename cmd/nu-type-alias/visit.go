@@ -1,7 +1,7 @@
 package main
 
 import (
-	"nu-type-alias/cmd/nu-type-gen/tsquery"
+	"nu-type-alias/internal/tsquery"
 
 	tree_sitter "github.com/tree-sitter/go-tree-sitter"
 )

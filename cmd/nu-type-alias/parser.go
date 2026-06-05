@@ -3,8 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"nu-type-alias/cmd/nu-type-gen/tsquery"
 	"nu-type-alias/internal/grammar"
+	"nu-type-alias/internal/tsquery"
 	"regexp"
 
 	"github.com/alecthomas/participle/v2"
