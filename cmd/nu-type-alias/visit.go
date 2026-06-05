@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"nu-type-alias/internal/tsquery"
 
 	tree_sitter "github.com/tree-sitter/go-tree-sitter"
@@ -21,7 +22,10 @@ func visitClosure(node *tree_sitter.Node, cursor *tree_sitter.TreeCursor, visito
 	// if there are none, we simply visit the rest of the children
 	named := node.NamedChildren(cursor)
 	if named[0].GrammarName() != "parameter_pipes" {
-		panic("assert failed: first named child of closure must be 'parameter_pipes'")
+		panic(fmt.Errorf(
+			"assert failed: first named child of closure must be 'parameter_pipes' got '%v'",
+			named[0].GrammarName(),
+		))
 	}
 	var span *tsquery.ByteRange
 	for _, child := range named[1:] {
