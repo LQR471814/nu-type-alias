@@ -8,6 +8,7 @@ package main
 import "C"
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"iter"
@@ -450,12 +451,14 @@ func (g *Generator) genFile(path string, file File) (err error) {
 }
 
 func (g *Generator) Generate() (err error) {
+	var errs []error
 	for path, file := range g.Files {
 		err = g.genFile(path, file)
 		if err != nil {
-			return
+			errs = append(errs, err)
 		}
 	}
+	err = errors.Join(errs...)
 	return
 }
 
