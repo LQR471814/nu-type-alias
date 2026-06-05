@@ -214,7 +214,11 @@ func (file File) genCmdIOAnnot(c CmdTypeAnnot, w *skipWriter) {
 	}
 }
 
-func (file File) Generate(out io.Writer) {
+func (file File) Generate(out io.Writer) (err error) {
+	defer func() {
+		err = recover()
+	}()
+
 	// here, we use skipWriter to skip over ranges of old code while writing
 	w := newSkipWriter(file.Code, out)
 
@@ -232,6 +236,7 @@ func (file File) Generate(out io.Writer) {
 	}
 
 	w.Remainder()
+	return
 }
 
 type genericCallContext struct {
@@ -414,15 +419,33 @@ func isBuiltinType(id []string) bool {
 	return false
 }
 
-func (g *Generator) Generate() (err error) {
-	for path, file := range g.Files {
-		var f *os.File
-		f, err = os.Create(path)
+func (g *Generator) genFile(path string, file File) (err error) {
+	var f *os.File
+	f, err = os.Create(path)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	err = file.Generate(f)
+	if err != nil {
+		err = f.Truncate(0)
 		if err != nil {
 			return
 		}
-		file.Generate(f)
-		f.Close()
+		err = f.Write(file.Code)
+		if err != nil {
+			return
+		}
+	}
+}
+
+func (g *Generator) Generate() (err error) {
+	for path, file := range g.Files {
+		err = g.genFile(path, file)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
