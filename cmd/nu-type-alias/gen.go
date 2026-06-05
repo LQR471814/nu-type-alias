@@ -216,7 +216,13 @@ func (file File) genCmdIOAnnot(c CmdTypeAnnot, w *skipWriter) {
 
 func (file File) Generate(out io.Writer) (err error) {
 	defer func() {
-		err = recover()
+		recovered := recover()
+		switch recovered := recovered.(type) {
+		case error:
+			err = recovered
+		default:
+			err = fmt.Errorf("%v", recovered)
+		}
 	}()
 
 	// here, we use skipWriter to skip over ranges of old code while writing
@@ -433,11 +439,13 @@ func (g *Generator) genFile(path string, file File) (err error) {
 		if err != nil {
 			return
 		}
-		err = f.Write(file.Code)
+		_, err = f.Write(file.Code)
 		if err != nil {
 			return
 		}
 	}
+
+	return
 }
 
 func (g *Generator) Generate() (err error) {
