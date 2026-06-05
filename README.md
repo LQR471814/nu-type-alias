@@ -2,7 +2,7 @@
 
 > A codemod for nushell that implements type aliases and generics.
 
-## Usage
+## Type definitions
 
 Types are defined within comments. Generics are supported and
 newlines can be used between type arguments.
@@ -18,6 +18,8 @@ newlines can be used between type arguments.
 
 # type ListOfRanges<T> = list<Range<T>>
 ```
+
+## Variable types
 
 You can declare a variable's type with the syntax `@type`.
 
@@ -36,6 +38,11 @@ let foo: record<min: int, max: int> = {min: 34, max: 70}
 > [!IMPORTANT]
 > Any existing type annotation for the variable will be
 > overwritten.
+
+You will not be able to use these types outside the file unless
+you have exported them (see [[#Importing/exporting types]]).
+
+## Command types
 
 You can declare the input and output as well as parameter types of
 a command using:
@@ -63,6 +70,38 @@ def format [--pad] { ... }
 # @param pad PadCfg
 def format [--pad: record<left: bool, right: bool>]: record<min: number, max: number> -> string {
     ...
+}
+```
+
+## Closure types
+
+Closures in nushell currently only support parameter typing. You
+can annotate closure parameters in the same way as commands, just
+make sure to put them in a comment block right after the parameter
+list, before any commands or expressions.
+
+```nu
+## before
+
+{|foo|
+    # you must put param types here
+    #
+	# @param foo Range<string>
+
+	echo "hello"
+
+    # you will not be able to use `@param` after any expressions
+}
+
+## after
+
+{|foo: record<left: string, right: string>|
+    # you must put param types here
+    #
+	# @param foo Range<string>
+	echo "hello"
+
+    # you will not be able to use `@param` after any expressions
 }
 ```
 
