@@ -146,19 +146,14 @@ func (w *skipWriter) Remainder() {
 	w.cursor = uint(len(w.buff))
 }
 
-func (file File) genParamAnnots(params []tree_sitter.Node, annots ParamTypeAnnots, w *skipWriter) (err error) {
+func (file File) genParamAnnots(params []tree_sitter.Node, annots ParamTypeAnnots, w *skipWriter) {
 	for _, p := range params {
 		param := tsquery.ParameterNode{Node: &p}
 		id := param.GetLongID(file.Code)
 
 		expr, ok := annots.GetParamType(id)
 		if !ok {
-			err = fmt.Errorf(
-				"fail to resolve parameter of name: %v (%v)",
-				id,
-				file.Path,
-			)
-			return
+			continue
 		}
 
 		w.Next(tsquery.NewByteRange(param.Node.ByteRange()))
