@@ -1,42 +1,55 @@
 {
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs = {
+    self.submodules = true;
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  };
   outputs =
     { self, nixpkgs }:
     let
       system = "x86_64-linux";
-      pkgs = import nixpkgs {
-        inherit system;
-      };
-      tree-sitter-nu = pkgs.callPackage ./tree-sitter-nu.nix { };
-      tree-sitter-dir = pkgs.callPackage ./tree-sitter-dir.nix {
-        inherit tree-sitter-nu;
+      pkgs = import nixpkgs { inherit system; };
+      tree-sitter-src = pkgs.fetchFromGitHub {
+        owner = "tree-sitter";
+        repo = "tree-sitter";
+        rev = "16aaed78ae6582ea55a94419828922c7b0960e10";
+        hash = "sha256-CsDBpXgAOEzp+i7InNExvK4Syc+7EVabna88Q+N+Lkw=";
       };
     in
     {
-      devShells.${system}.default =
-        let
-          libs = with pkgs; [ ];
-        in
-        pkgs.mkShell {
-          name = "devenv";
-          buildInputs = libs;
-          nativeBuildInputs = (
-            with pkgs;
-            [
-              pkg-config
-              tree-sitter
-              tree-sitter-grammars.tree-sitter-nu
-            ]
-          );
+      packages.${system}.default = pkgs.buildGoModule {
+        pname = "nu-type-alias";
+        version = "0.1.0";
 
-          LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath libs}:$LD_LIBRARY_PATH";
+        src = ./.;
 
-          shellHook = ''
-            export CGO_ENABLED=1
-            export TREE_SITTER_DIR="${tree-sitter-dir}"
-            echo "Devshell activated."
-          '';
+        vendorHash = "sha256-vqvsMkB0T41XZ0/lj7MbNXUdL4612ThPbqq5rSkjSrM=";
+        # sourceRoot = "${./.}/cmd/nu-type-alias";
+        subPackages = [ "cmd/nu-type-alias" ];
+        meta = {
+          mainProgram = "nu-type-alias";
         };
-      ts-nu = "${pkgs.tree-sitter-grammars.tree-sitter-nu}";
+
+        preBuild = ''
+          export CGO_CFLAGS="-I${tree-sitter-src}/lib/include -I${tree-sitter-src}/lib/src $CGO_CFLAGS"
+          export CGO_LDFLAGS="$CGO_LDFLAGS"
+        '';
+      };
+
+      apps.${system}.default = {
+        type = "app";
+        program = "${self.packages.${system}.default}/bin/myapp";
+      };
+
+      devShells.${system}.default = pkgs.mkShell {
+        packages = [
+          pkgs.go
+          pkgs.gopls
+          pkgs.gotools
+        ];
+
+        shellHook = ''
+          export CGO_ENABLED=1
+        '';
+      };
     };
 }
