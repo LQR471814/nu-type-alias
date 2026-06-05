@@ -2,7 +2,43 @@
 
 > A codemod for nushell that implements type aliases and generics.
 
-## Type definitions
+> [!IMPORTANT]
+> This project is *early-stage*, so it would be a *very good idea*
+> to commit your codebase before running it. There is a non-zero
+> chance that it may generate incorrect code or corrupt files due
+> to bugs.
+
+## Usage
+
+`nu-type-alias` is a tool that allows you to write type
+annotations for values in a "javadoc-esque" style and generate
+actual type annotations which are enforceable during compile and
+run-time.
+
+Ex.
+
+```nu
+# type Entry = record<id: int, name: string>
+# type Response = record<
+#   time: timestamp,
+#   entries: oneof<list<Entry>, nothing>,
+#   first: oneof<Entry, nothing>
+# >
+
+# @type Response
+let res = {}
+
+# --- output (modified in-place)
+
+# @type Response
+let res: record<time: timestamp, entries: oneof<list<record<id: int, name: string>>, nothing>, first: oneof<record<id: int, name: string>, nothing>> = {}
+```
+
+It also allows you to define generics for your custom type aliases
+and annotate other values like parameters of closures and
+commands.
+
+### Type definitions
 
 Types are defined within comments. Generics are supported and
 newlines can be used between type arguments.
@@ -19,7 +55,7 @@ newlines can be used between type arguments.
 # type ListOfRanges<T> = list<Range<T>>
 ```
 
-## Variable types
+### Variable types
 
 You can declare a variable's type with the syntax `@type`.
 
@@ -42,7 +78,7 @@ let foo: record<min: int, max: int> = {min: 34, max: 70}
 You will not be able to use these types outside the file unless
 you have exported them (see [[#Importing/exporting types]]).
 
-## Command types
+### Command types
 
 You can declare the input and output as well as parameter types of
 a command using:
@@ -73,7 +109,7 @@ def format [--pad: record<left: bool, right: bool>]: record<min: number, max: nu
 }
 ```
 
-## Closure types
+### Closure types
 
 Closures in nushell currently only support parameter typing. You
 can annotate closure parameters in the same way as commands, just
@@ -105,7 +141,7 @@ list, before any commands or expressions.
 }
 ```
 
-## Importing/exporting types
+### Importing/exporting types
 
 Types can also be exported and imported from files using the
 `@usetype "{path}.nu"` and `export` syntax.
@@ -146,10 +182,11 @@ filename, minus `.nu` and all special characters and whitespace.
 > Unlike the `use` keyword, you must put double quotes around the
 > filename of `@usetype` otherwise a silent failure may occur!
 
-## CLI
+### CLI
 
 Run the `nu-type-alias` binary with a list of paths to nushell
-files to be included separated by newline.
+files to be included separated by newline. The tool will modify
+the files in all the given file paths with the
 
 The following is a common pattern, it will include all nushell
 files under the current directory.
