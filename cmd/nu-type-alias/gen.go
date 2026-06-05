@@ -47,7 +47,7 @@ func (file File) resolveModule(mod string) (resolved File, err error) {
 	relPath, modExist := file.UseDecls[mod]
 	if !modExist {
 		err = fmt.Errorf(
-			"type module %v has not been declared (%v)",
+			"type module %v has not been declared %v",
 			mod,
 			file.UseDecls,
 		)
@@ -57,9 +57,10 @@ func (file File) resolveModule(mod string) (resolved File, err error) {
 	resolved, ok := file.generator.Files[normalized]
 	if !ok {
 		err = fmt.Errorf(
-			"type module %v doesn't exist at filepath or hasn't been included: %v",
+			"type module %v doesn't exist at filepath or hasn't been included: %v %v",
 			mod,
 			normalized,
+			file.UseDecls,
 		)
 	}
 	return
@@ -178,9 +179,10 @@ func (file File) genCmdParamAnnots(c CmdTypeAnnot, w *skipWriter) {
 		expr, ok := c.GetParamType(id)
 		if !ok {
 			panic(fmt.Errorf(
-				"fail to resolve command %v parameter of name: %v",
+				"fail to resolve command %v parameter of name: %v (%v)",
 				cmdName,
 				id,
+				file.Path,
 			))
 		}
 
@@ -222,9 +224,9 @@ func (file File) Generate(out io.Writer) (err error) {
 		case nil:
 			err = nil
 		case error:
-			err = recovered
+			err = fmt.Errorf("%v: %w", file.Path, recovered)
 		default:
-			err = fmt.Errorf("%v", recovered)
+			err = fmt.Errorf("%v: %v", file.Path, recovered)
 		}
 	}()
 
