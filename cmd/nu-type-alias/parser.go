@@ -6,6 +6,7 @@ import (
 	"nu-type-alias/internal/grammar"
 	"nu-type-alias/internal/tsquery"
 	"regexp"
+	"slices"
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
@@ -47,20 +48,10 @@ func (c VarTypeAnnot) TargetRange() tsquery.ByteRange {
 	return tsquery.NewByteRange(start, end)
 }
 
-type CmdTypeAnnot struct {
-	Input  *grammar.InputTypeAnnotation
-	Output *grammar.OutputTypeAnnotation
-	Params []grammar.ParamTypeAnnotation
-	Cmd    *tree_sitter.Node
-}
+type ParamTypeAnnots []grammar.ParamTypeAnnotation
 
-func (c CmdTypeAnnot) ByteStart() uint {
-	start, _ := c.Cmd.ByteRange()
-	return start
-}
-
-func (c CmdTypeAnnot) GetParamType(param string) (out grammar.TypeExpr, ok bool) {
-	for _, an := range c.Params {
+func (params ParamTypeAnnots) GetParamType(param string) (out grammar.TypeExpr, ok bool) {
+	for _, an := range params {
 		if an.ID == param {
 			out = an.Type
 			ok = true
@@ -69,6 +60,28 @@ func (c CmdTypeAnnot) GetParamType(param string) (out grammar.TypeExpr, ok bool)
 	}
 	ok = false
 	return
+}
+
+type ClosureTypeAnnot struct {
+	Closure *tree_sitter.Node
+	Params  ParamTypeAnnots
+}
+
+func (c ClosureTypeAnnot) ByteStart() uint {
+	start, _ := c.Closure.ByteRange()
+	return start
+}
+
+type CmdTypeAnnot struct {
+	Input  *grammar.InputTypeAnnotation
+	Output *grammar.OutputTypeAnnotation
+	Params ParamTypeAnnots
+	Cmd    *tree_sitter.Node
+}
+
+func (c CmdTypeAnnot) ByteStart() uint {
+	start, _ := c.Cmd.ByteRange()
+	return start
 }
 
 func (c CmdTypeAnnot) IOTargetRange() tsquery.ByteRange {
@@ -84,15 +97,39 @@ func (c CmdTypeAnnot) IOTargetRange() tsquery.ByteRange {
 }
 
 type AnnotationVisitor struct {
-	code      []byte
-	TypeDecls []grammar.TypeDecl
-	UseDecls  []grammar.UseDecl
-	CmdAnnots []CmdTypeAnnot
-	VarAnnots []VarTypeAnnot
+	code          []byte
+	TypeDecls     []grammar.TypeDecl
+	UseDecls      []grammar.UseDecl
+	CmdAnnots     []CmdTypeAnnot
+	ClosureAnnots []ClosureTypeAnnot
+	VarAnnots     []VarTypeAnnot
 }
 
 func NewAnnotationVisitor(code []byte) *AnnotationVisitor {
 	return &AnnotationVisitor{code: code}
+}
+
+func (v *AnnotationVisitor) AnnotsOrdered() []Annot {
+	var annots []Annot
+	for _, an := range v.CmdAnnots {
+		annots = append(annots, Annot(an))
+	}
+	for _, an := range v.VarAnnots {
+		annots = append(annots, Annot(an))
+	}
+	for _, an := range v.ClosureAnnots {
+		annots = append(annots, Annot(an))
+	}
+	slices.SortFunc(annots, func(a, b Annot) int {
+		if a.ByteStart() < b.ByteStart() {
+			return -1
+		}
+		if a.ByteStart() > b.ByteStart() {
+			return 1
+		}
+		return 0
+	})
+	return annots
 }
 
 func (v *AnnotationVisitor) VisitLoneComment(span tsquery.ByteRange) {
@@ -143,6 +180,29 @@ func (v *AnnotationVisitor) VisitCmdComment(span tsquery.ByteRange, cmd *tree_si
 		}
 	}
 	v.CmdAnnots = append(v.CmdAnnots, out)
+	return
+}
+
+func (v *AnnotationVisitor) VisitClosureHeader(span tsquery.ByteRange, closure *tree_sitter.Node) {
+	var stmts []grammar.Stmt
+	err := parseStatements(v.code[span.Start:span.End], &stmts)
+	if err != nil {
+		panic(err)
+	}
+	out := ClosureTypeAnnot{Closure: closure}
+	for _, stmt := range stmts {
+		switch stmt := stmt.(type) {
+		case grammar.ParamTypeAnnotation:
+			out.Params = append(out.Params, stmt)
+		case grammar.UseDecl:
+			v.UseDecls = append(v.UseDecls, stmt)
+		case grammar.TypeDecl:
+			v.TypeDecls = append(v.TypeDecls, stmt)
+		default:
+			panic(fmt.Errorf("got unexpected statement %T", stmt))
+		}
+	}
+	v.ClosureAnnots = append(v.ClosureAnnots, out)
 	return
 }
 

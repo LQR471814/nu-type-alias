@@ -50,6 +50,7 @@ func (w CommandNode) assertNode() {
 }
 
 func (w CommandNode) GetName(code []byte) (out string) {
+	w.assertNode()
 	unquote := w.ChildByFieldName("unquoted_name")
 	if unquote != nil {
 		out = NewByteRange(unquote.ByteRange()).GetString(code)
@@ -64,6 +65,7 @@ func (w CommandNode) GetName(code []byte) (out string) {
 }
 
 func (w CommandNode) GetParameters(cursor *tree_sitter.TreeCursor) []tree_sitter.Node {
+	w.assertNode()
 	paramListNode := w.ChildByFieldName("parameters")
 	paramList := paramListNode.Children(cursor)
 	return paramList[1 : len(paramList)-1]

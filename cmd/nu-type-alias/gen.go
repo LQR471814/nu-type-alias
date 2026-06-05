@@ -15,7 +15,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strings"
 	"unsafe"
 
@@ -35,8 +34,7 @@ type File struct {
 	// set of modules names -> relative file path
 	UseDecls  map[string]string
 	TypeDecls map[string]grammar.TypeDecl
-	CmdAnnots []CmdTypeAnnot
-	VarAnnots []VarTypeAnnot
+	Annots    []Annot
 }
 
 func (f File) Close() {
@@ -117,26 +115,6 @@ func (file File) renderBuiltinType(expr grammar.TypeExpr, out io.Writer, callCtx
 	fmt.Fprint(out, ">")
 }
 
-func (file File) getAnnotOrdered() []Annot {
-	var annots []Annot
-	for _, an := range file.CmdAnnots {
-		annots = append(annots, Annot(an))
-	}
-	for _, an := range file.VarAnnots {
-		annots = append(annots, Annot(an))
-	}
-	slices.SortFunc(annots, func(a, b Annot) int {
-		if a.ByteStart() < b.ByteStart() {
-			return -1
-		}
-		if a.ByteStart() > b.ByteStart() {
-			return 1
-		}
-		return 0
-	})
-	return annots
-}
-
 // skipWriter writes a given buffer to an io.Writer but allows one to skip
 // ranges of bytes while writing
 type skipWriter struct {
@@ -168,29 +146,37 @@ func (w *skipWriter) Remainder() {
 	w.cursor = uint(len(w.buff))
 }
 
-func (file File) genCmdParamAnnots(c CmdTypeAnnot, w *skipWriter) {
-	// for debugging purpose
-	cmdNode := tsquery.CommandNode{Node: c.Cmd}
-	cmdName := cmdNode.GetName(file.Code)
-
-	for _, p := range cmdNode.GetParameters(file.treeCursor) {
+func (file File) genParamAnnots(params []tree_sitter.Node, annots ParamTypeAnnots, w *skipWriter) (err error) {
+	for _, p := range params {
 		param := tsquery.ParameterNode{Node: &p}
 		id := param.GetLongID(file.Code)
 
-		expr, ok := c.GetParamType(id)
+		expr, ok := annots.GetParamType(id)
 		if !ok {
-			panic(fmt.Errorf(
-				"fail to resolve command %v parameter of name: %v (%v)",
-				cmdName,
+			err = fmt.Errorf(
+				"fail to resolve parameter of name: %v (%v)",
 				id,
 				file.Path,
-			))
+			)
+			return
 		}
 
 		w.Next(tsquery.NewByteRange(param.Node.ByteRange()))
 		fmt.Fprint(w.Out, id)
 		fmt.Fprint(w.Out, ": ")
 		file.renderCanonType(expr, w.Out, nil)
+	}
+	return
+}
+
+func (file File) genCmdParamAnnots(c CmdTypeAnnot, w *skipWriter) {
+	cmdNode := tsquery.CommandNode{Node: c.Cmd}
+	cmdName := cmdNode.GetName(file.Code)
+	params := cmdNode.GetParameters(file.treeCursor)
+
+	err := file.genParamAnnots(params, c.Params, w)
+	if err != nil {
+		panic(fmt.Errorf("gen cmd %v params: %v", cmdName, c.Params))
 	}
 }
 
@@ -218,6 +204,15 @@ func (file File) genCmdIOAnnot(c CmdTypeAnnot, w *skipWriter) {
 	}
 }
 
+func (file File) genClosureParamAnnots(c ClosureTypeAnnot, w *skipWriter) {
+	closure := tsquery.ClosureNode{Node: c.Closure}
+	params := closure.GetParameters(file.treeCursor)
+	err := file.genParamAnnots(params, c.Params, w)
+	if err != nil {
+		panic(fmt.Errorf("gen closure: %w", err))
+	}
+}
+
 func (file File) Generate(out io.Writer) (err error) {
 	defer func() {
 		recovered := recover()
@@ -234,11 +229,17 @@ func (file File) Generate(out io.Writer) (err error) {
 	// here, we use skipWriter to skip over ranges of old code while writing
 	w := newSkipWriter(file.Code, out)
 
-	for _, an := range file.getAnnotOrdered() {
+	for _, annot := range file.Annots {
+		fmt.Printf("%T\n", annot)
+	}
+
+	for _, an := range file.Annots {
 		switch an := an.(type) {
 		case CmdTypeAnnot:
 			file.genCmdParamAnnots(an, &w)
 			file.genCmdIOAnnot(an, &w)
+		case ClosureTypeAnnot:
+			file.genClosureParamAnnots(an, &w)
 		case VarTypeAnnot:
 			w.Next(an.TargetRange())
 			fmt.Fprint(out, ": ")
@@ -377,15 +378,13 @@ func (g *Generator) newFile(path string, code []byte) (file File) {
 		generator:  g,
 		UseDecls:   make(map[string]string),
 		TypeDecls:  make(map[string]grammar.TypeDecl),
-		CmdAnnots:  nil,
-		VarAnnots:  nil,
 	}
 
 	visitor := NewAnnotationVisitor(code)
 	visitComments(file.tree.RootNode(), treeCursor, visitor)
 
-	file.CmdAnnots = visitor.CmdAnnots
-	file.VarAnnots = visitor.VarAnnots
+	file.Annots = visitor.AnnotsOrdered()
+
 	for _, decl := range visitor.TypeDecls {
 		file.TypeDecls[decl.ID] = decl
 	}
