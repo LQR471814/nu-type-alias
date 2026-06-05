@@ -3,14 +3,15 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 	"testing"
 )
 
 func TestGenerator(t *testing.T) {
-	gen, err := NewGenerator([]string{
+	gen, err := NewGenerator(slices.Values([]string{
 		"./test/foo.nu",
 		"./test/bar.nu",
-	})
+	}))
 	if err != nil {
 		t.Fatal(err)
 	}
