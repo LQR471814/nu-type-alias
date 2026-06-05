@@ -204,3 +204,8 @@ ls **/*.nu
 > `@usetype`. Therefore, all files that have anything to do with
 > type aliases must be included.
 
+## Building
+
+1. Clone with submodules included.
+2. Build with `CGO_ENABLED=1`
+
