@@ -169,10 +169,7 @@ func (file File) genCmdParamAnnots(c CmdTypeAnnot, w *skipWriter) {
 	cmdName := cmdNode.GetName(file.Code)
 	params := cmdNode.GetParameters(file.treeCursor)
 
-	err := file.genParamAnnots(params, c.Params, w)
-	if err != nil {
-		panic(fmt.Errorf("gen cmd %v params: %v", cmdName, c.Params))
-	}
+	file.genParamAnnots(params, c.Params, w)
 }
 
 func (file File) genCmdIOAnnot(c CmdTypeAnnot, w *skipWriter) {
@@ -202,10 +199,7 @@ func (file File) genCmdIOAnnot(c CmdTypeAnnot, w *skipWriter) {
 func (file File) genClosureParamAnnots(c ClosureTypeAnnot, w *skipWriter) {
 	closure := tsquery.ClosureNode{Node: c.Closure}
 	params := closure.GetParameters(file.treeCursor)
-	err := file.genParamAnnots(params, c.Params, w)
-	if err != nil {
-		panic(fmt.Errorf("gen closure: %w", err))
-	}
+	file.genParamAnnots(params, c.Params, w)
 }
 
 func (file File) Generate(out io.Writer) (err error) {
