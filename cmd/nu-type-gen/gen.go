@@ -13,6 +13,7 @@ import (
 	"iter"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"unsafe"
@@ -338,6 +339,15 @@ func NewGenerator(include iter.Seq[string]) (gen *Generator, err error) {
 	return
 }
 
+var modNameNotAllowed = regexp.MustCompile(`[^A-Za-z\d]`)
+
+func deriveModuleName(filename string) string {
+	if !strings.HasSuffix(filename, ".nu") {
+		panic(fmt.Errorf("invalid file: '%v' must have extension .nu", filename))
+	}
+	return modNameNotAllowed.ReplaceAllLiteralString(filename[:len(filename)-3], "")
+}
+
 func (g *Generator) newFile(path string, code []byte) (file File) {
 	tree := g.parser.Parse(code, nil)
 	treeCursor := tree.Walk()
@@ -368,13 +378,8 @@ func (g *Generator) newFile(path string, code []byte) (file File) {
 		if err != nil {
 			panic(err)
 		}
-
-		modname := filepath.Base(relPath)
-		if !strings.HasSuffix(modname, ".nu") {
-			panic(fmt.Errorf("invalid file: '%v' must have extension .nu", modname))
-		}
-
-		file.UseDecls[modname[:len(modname)-3]] = relPath
+		modname := deriveModuleName(filepath.Base(relPath))
+		file.UseDecls[modname] = relPath
 	}
 
 	return file
