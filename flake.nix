@@ -18,7 +18,7 @@
     {
       packages.${system}.default = pkgs.buildGoModule {
         pname = "nu-type-alias";
-        version = "0.2.7";
+        version = "0.2.8";
 
         src = ./.;
 

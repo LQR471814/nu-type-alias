@@ -1,7 +1,9 @@
 # @usetype "foo.api.nu"
 
-# @type fooapi.PERT<string>
-let x: record<opt: string, exp: string, pes: string> = {}
+# type Test = record<foo: int>
+
+# @type fooapi.Container<Test>
+let x: record<opt: string, exp: string, pes: string> = []
 
 {|foo: any|
 	# @param foo fooapi.PERT<string>
