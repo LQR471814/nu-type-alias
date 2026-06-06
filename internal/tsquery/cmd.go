@@ -32,9 +32,12 @@ func (w ParameterNode) GetLongID(code []byte) string {
 	if paramLongFlag == nil {
 		panic("assert failed: either param_name or param_long_flag must be specified")
 	}
-	longFlagID := paramLongFlag.Child(0)
+	longFlagID := paramLongFlag.NamedChild(0)
 	if longFlagID == nil || longFlagID.GrammarName() != "long_flag_identifier" {
-		panic("assert failed: long_flag_identifier must be the first child of param_long_flag")
+		panic(fmt.Errorf(
+			"assert failed: long_flag_identifier must be the first child of param_long_flag, got '%v'",
+			longFlagID.GrammarName(),
+		))
 	}
 	return NewByteRange(longFlagID.ByteRange()).GetString(code)
 }

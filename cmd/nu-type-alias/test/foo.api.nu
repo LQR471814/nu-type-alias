@@ -3,7 +3,7 @@
 # @param scale float
 # @input PERT<int>
 # @output PERT<float>
-def bar [scale] {
+def bar [--scale] {
 	$in
 }
 
