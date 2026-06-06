@@ -17,6 +17,9 @@ func (w ClosureNode) assertNode() {
 func (w ClosureNode) GetParameters(cursor *tree_sitter.TreeCursor) []tree_sitter.Node {
 	w.assertNode()
 	paramListNode := w.ChildByFieldName("parameters")
+	if paramListNode == nil {
+		return nil
+	}
 	paramList := paramListNode.Children(cursor)
 	return paramList[1 : len(paramList)-1]
 }
