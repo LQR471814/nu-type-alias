@@ -65,9 +65,10 @@ func (file File) resolveModule(mod string) (resolved File, err error) {
 	return
 }
 
-func (file File) resolveTypeID(id []string) (decl grammar.TypeDecl, imported File, err error) {
+func (file File) resolveTypeID(id []string) (decl grammar.TypeDecl, source File, err error) {
 	decl, ok := file.TypeDecls[id[0]]
 	if ok {
+		source = file
 		return
 	}
 	if len(id) != 2 {
@@ -79,12 +80,12 @@ func (file File) resolveTypeID(id []string) (decl grammar.TypeDecl, imported Fil
 	}
 	mod := id[0]
 	name := id[1]
-	file, err = file.resolveModule(mod)
+	source, err = file.resolveModule(mod)
 	if err != nil {
 		err = fmt.Errorf("module doesn't exist: %w", err)
 		return
 	}
-	decl, ok = file.TypeDecls[name]
+	decl, ok = source.TypeDecls[name]
 	if !ok {
 		err = fmt.Errorf(
 			"imported type doesn't exist: %v.%v",
@@ -296,14 +297,14 @@ func (file File) renderCanonType(expr grammar.TypeExpr, out io.Writer, parentCtx
 		fmt.Fprint(out, canonicalType)
 		return
 	}
-	decl, imported, err := file.resolveTypeID(expr.ID)
+	decl, source, err := file.resolveTypeID(expr.ID)
 	if err != nil {
 		panic(err)
 	}
 	// we resolve generic type params -> canonical types (in the context of the
 	// parent ctx)
 	childCtx := file.newGenericCallCtx(decl, expr, parentCtx)
-	imported.renderCanonType(decl.Type, out, childCtx)
+	source.renderCanonType(decl.Type, out, childCtx)
 }
 
 type Generator struct {

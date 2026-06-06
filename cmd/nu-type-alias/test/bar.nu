@@ -2,17 +2,17 @@
 
 # type Test = record<foo: int>
 
-# @type fooapi.Container<Test>
-let x: record<opt: string, exp: string, pes: string> = []
+# @type fooapi.PERTContainer<Test>
+let x = []
 
-{|foo: any|
+{|foo|
 	# @param foo fooapi.PERT<string>
 	echo "hello"
 }
 
 # @type closure
-let x = (
-	do {|bar, foo|
+let x: closure = (
+	do {|bar foo|
 		# @param bar int
 		# @param foo fooapi.PERT<string>
 		[4 6]
