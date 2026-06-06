@@ -1,9 +1,13 @@
 # @usetype "foo.api.nu"
+# @usetype "baz.nu"
 
 # type Test = record<foo: int>
 
 # @type fooapi.PERTContainer<Test>
 let x = []
+
+# @type baz.Test
+let y = []
 
 {|foo|
 	# @param foo fooapi.PERT<string>
