@@ -150,17 +150,22 @@ func (w *skipWriter) Remainder() {
 func (file File) genParamAnnots(params []tree_sitter.Node, annots ParamTypeAnnots, w *skipWriter) {
 	for _, p := range params {
 		param := tsquery.ParameterNode{Node: &p}
-		id := param.GetLongID(file.Code)
-
-		expr, ok := annots.GetParamType(id)
+		id := tsquery.NewByteRange(param.GetLongID().ByteRange()).GetString(file.Code)
+		typeNode := param.GetTypeNode(file.treeCursor)
+		typeExpr, ok := annots.GetParamType(id)
 		if !ok {
 			continue
 		}
 
-		w.Next(tsquery.NewByteRange(param.Node.ByteRange()))
-		fmt.Fprint(w.Out, id)
+		replace := param.GetFullIDRange()
+		replace.Start = replace.End
+		if typeNode != nil {
+			_, replace.End = typeNode.ByteRange()
+		}
+		w.Next(replace)
+
 		fmt.Fprint(w.Out, ": ")
-		file.renderCanonType(expr, w.Out, nil)
+		file.renderCanonType(typeExpr, w.Out, nil)
 	}
 	return
 }

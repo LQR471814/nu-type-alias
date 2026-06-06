@@ -22,11 +22,11 @@ func (w ParameterNode) assertNode() {
 // GetLongID gets the long name of a "parameter" tree-sitter node.
 //
 // paramNode is of GrammarName == "parameter"
-func (w ParameterNode) GetLongID(code []byte) string {
+func (w ParameterNode) GetLongID() *tree_sitter.Node {
 	w.assertNode()
 	nameNode := w.ChildByFieldName("param_name")
 	if nameNode != nil {
-		return NewByteRange(nameNode.ByteRange()).GetString(code)
+		return nameNode
 	}
 	paramLongFlag := w.ChildByFieldName("param_long_flag")
 	if paramLongFlag == nil {
@@ -36,7 +36,36 @@ func (w ParameterNode) GetLongID(code []byte) string {
 	if longFlagID == nil || longFlagID.GrammarName() != "long_flag_identifier" {
 		panic("assert failed: long_flag_identifier must be the first child of param_long_flag")
 	}
-	return NewByteRange(longFlagID.ByteRange()).GetString(code)
+	return longFlagID
+}
+
+func (w ParameterNode) GetTypeNode(cursor *tree_sitter.TreeCursor) *tree_sitter.Node {
+	for _, child := range w.NamedChildren(cursor) {
+		if child.GrammarName() == "param_type" {
+			return &child
+		}
+	}
+	return nil
+}
+
+// GetFullIDRange gets the range of the entire ID (ex.
+// `--flag(-f)`)
+func (w ParameterNode) GetFullIDRange() ByteRange {
+	w.assertNode()
+	nameNode := w.ChildByFieldName("param_name")
+	if nameNode != nil {
+		return NewByteRange(nameNode.ByteRange())
+	}
+	paramLongFlag := w.ChildByFieldName("param_long_flag")
+	if paramLongFlag == nil {
+		panic("assert failed: either param_name or param_long_flag must be specified")
+	}
+	byteRange := NewByteRange(paramLongFlag.ByteRange())
+	paramShortFlag := w.ChildByFieldName("param_short_flag")
+	if paramShortFlag != nil {
+		_, byteRange.End = paramShortFlag.ByteRange()
+	}
+	return byteRange
 }
 
 type CommandNode struct {
