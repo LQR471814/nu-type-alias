@@ -1,6 +1,9 @@
 # @usetype "foo.api.nu"
 # @usetype "baz.nu"
 
+use foo.api.nu
+use baz.nu
+
 # type Test = record<foo: int>
 
 # @type fooapi.PERTContainer<Test>
