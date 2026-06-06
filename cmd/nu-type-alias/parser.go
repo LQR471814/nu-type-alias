@@ -239,7 +239,7 @@ func (v *AnnotationVisitor) VisitVarComment(span tsquery.ByteRange, variable *tr
 	}
 }
 
-var commentPrefix = regexp.MustCompile("(?m)^# ?")
+var commentPrefix = regexp.MustCompile(`(?m)^[ \t]*# *`)
 
 // parseStatements parses grammar.Stmt from a block of code which may contain
 // other text that are not grammar.Stmt
