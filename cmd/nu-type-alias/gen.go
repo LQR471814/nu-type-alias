@@ -150,19 +150,27 @@ func (w *skipWriter) Remainder() {
 func (file File) genParamAnnots(params []tree_sitter.Node, annots ParamTypeAnnots, w *skipWriter) {
 	for _, p := range params {
 		param := tsquery.ParameterNode{Node: &p}
+
 		id := tsquery.NewByteRange(param.GetLongID().ByteRange()).GetString(file.Code)
-		typeNode := param.GetTypeNode(file.treeCursor)
 		typeExpr, ok := annots.GetParamType(id)
 		if !ok {
 			continue
 		}
 
+		typeNode := param.GetTypeNode(file.treeCursor)
+
+		// get the end of the id
 		replace := param.GetFullIDRange()
 		replace.Start = replace.End
 		if typeNode != nil {
 			_, replace.End = typeNode.ByteRange()
 		}
 		w.Next(replace)
+
+		if typeExpr.ID[0] == "bool" {
+			// boolean flags should not have type annotation
+			continue
+		}
 
 		fmt.Fprint(w.Out, ": ")
 		file.renderCanonType(typeExpr, w.Out, nil)

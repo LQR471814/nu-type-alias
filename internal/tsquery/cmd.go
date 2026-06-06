@@ -6,6 +6,7 @@ import (
 	tree_sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
+// The given Node must be of GrammarName == "parameter"
 type ParameterNode struct {
 	*tree_sitter.Node
 }
@@ -20,23 +21,38 @@ func (w ParameterNode) assertNode() {
 }
 
 // GetLongID gets the long name of a "parameter" tree-sitter node.
-//
-// paramNode is of GrammarName == "parameter"
-func (w ParameterNode) GetLongID() *tree_sitter.Node {
+func (w ParameterNode) GetLongID() (node *tree_sitter.Node) {
 	w.assertNode()
+
 	nameNode := w.ChildByFieldName("param_name")
 	if nameNode != nil {
-		return nameNode
+		node = nameNode
+		return
 	}
+
+	paramShortFlag := w.ChildByFieldName("param_short_flag")
 	paramLongFlag := w.ChildByFieldName("param_long_flag")
-	if paramLongFlag == nil {
-		panic("assert failed: either param_name or param_long_flag must be specified")
+
+	switch {
+	case paramShortFlag != nil:
+		shortFlagID := paramShortFlag.ChildByFieldName("name")
+		if shortFlagID == nil || shortFlagID.GrammarName() != "param_short_flag_identifier" {
+			panic("assert failed: param_short_flag_identifier must be present under param_short_flag by key 'name'")
+		}
+		node = shortFlagID
+	case paramLongFlag != nil:
+		longFlagID := paramLongFlag.NamedChild(0)
+		if longFlagID == nil || longFlagID.GrammarName() != "long_flag_identifier" {
+			panic("assert failed: long_flag_identifier must be the first child of param_long_flag")
+		}
+		node = longFlagID
+	case paramShortFlag != nil && paramLongFlag != nil:
+		panic("assert: param_short_flag and param_long_flag cannot both be present under parameter at the same time")
+	case paramShortFlag == nil && paramLongFlag == nil:
+		panic("assert failed: either param_name, param_short_flag, or param_long_flag must be specified")
 	}
-	longFlagID := paramLongFlag.NamedChild(0)
-	if longFlagID == nil || longFlagID.GrammarName() != "long_flag_identifier" {
-		panic("assert failed: long_flag_identifier must be the first child of param_long_flag")
-	}
-	return longFlagID
+
+	return
 }
 
 func (w ParameterNode) GetTypeNode(cursor *tree_sitter.TreeCursor) *tree_sitter.Node {
@@ -50,22 +66,15 @@ func (w ParameterNode) GetTypeNode(cursor *tree_sitter.TreeCursor) *tree_sitter.
 
 // GetFullIDRange gets the range of the entire ID (ex.
 // `--flag(-f)`)
-func (w ParameterNode) GetFullIDRange() ByteRange {
+func (w ParameterNode) GetFullIDRange() (out ByteRange) {
 	w.assertNode()
-	nameNode := w.ChildByFieldName("param_name")
-	if nameNode != nil {
-		return NewByteRange(nameNode.ByteRange())
+	longID := w.GetLongID()
+	out = NewByteRange(longID.ByteRange())
+	flagCapsule := w.ChildByFieldName("flag_capsule")
+	if flagCapsule != nil {
+		_, out.End = flagCapsule.ByteRange()
 	}
-	paramLongFlag := w.ChildByFieldName("param_long_flag")
-	if paramLongFlag == nil {
-		panic("assert failed: either param_name or param_long_flag must be specified")
-	}
-	byteRange := NewByteRange(paramLongFlag.ByteRange())
-	paramShortFlag := w.ChildByFieldName("param_short_flag")
-	if paramShortFlag != nil {
-		_, byteRange.End = paramShortFlag.ByteRange()
-	}
-	return byteRange
+	return
 }
 
 type CommandNode struct {

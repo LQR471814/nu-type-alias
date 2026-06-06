@@ -4,8 +4,10 @@
 # @output PERT<float>
 # @param scale float
 # @param f bool
+# @param b list<int>
 # @param foo record
-def bar [--scale(-s) -f --foo] {
+# @param bar bool
+def bar [--scale(-s) -f -b --foo --bar] {
 	$in
 }
 
