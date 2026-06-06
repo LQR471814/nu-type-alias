@@ -1,9 +1,11 @@
 # type PERT<T> = record<opt: T, exp: T, pes: T>
 
-# @param scale float
 # @input PERT<int>
 # @output PERT<float>
-def bar [--scale] {
+# @param scale float
+# @param f bool
+# @param foo record
+def bar [--scale(-s) -f --foo] {
 	$in
 }
 
