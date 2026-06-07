@@ -122,7 +122,7 @@ func (b visitTSNode) VisitNamedNode(node *tree_sitter.Node) {
 		panic("assert failed: visitClosure must be called with node.GrammarName == val_closure")
 	}
 	children := node.NamedChildren(b.cursor)
-	if children[0].GrammarName() == "parameter_pipes" {
+	if len(children) > 0 && children[0].GrammarName() == "parameter_pipes" {
 		children = children[1:]
 	}
 	var span *tsquery.ByteRange
