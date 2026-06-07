@@ -274,33 +274,36 @@ func (file File) newGenericCallCtx(
 	decl grammar.TypeDecl,
 	expr grammar.TypeExpr,
 	parentCtx *genericCallContext,
-) *genericCallContext {
+) (out *genericCallContext, err error) {
 	if len(decl.Generics) == 0 {
-		return parentCtx
+		out = parentCtx
+		return
 	}
 	childCtx := &genericCallContext{
 		parentCtx: parentCtx,
 		generics:  make(map[string]string),
 	}
 	if len(expr.Args) != len(decl.Generics) {
-		panic(fmt.Errorf(
+		err = fmt.Errorf(
 			"assert failed: incorrect number of generic type arguments for type '%v' expected %v got %v",
 			decl.ID,
 			len(decl.Generics),
 			len(expr.Args),
-		))
+		)
+		return
 	}
 	for i, arg := range expr.Args {
 		var canon strings.Builder
 		file.renderCanonType(arg.Value, &canon, parentCtx)
 		childCtx.generics[decl.Generics[i]] = canon.String()
 	}
-	return childCtx
+	out = childCtx
+	return
 }
 
 // set parentCtx == nil if renderCanonType is not being called from within a
 // generic type
-func (file File) renderCanonType(expr grammar.TypeExpr, out io.Writer, parentCtx *genericCallContext) {
+func (file File) renderCanonType(expr grammar.TypeExpr, out io.Writer, parentCtx *genericCallContext) (err error) {
 	if isBuiltinType(expr.ID) {
 		file.renderBuiltinType(expr, out, parentCtx)
 		return
@@ -312,12 +315,16 @@ func (file File) renderCanonType(expr grammar.TypeExpr, out io.Writer, parentCtx
 	}
 	decl, source, err := file.resolveTypeID(expr.ID)
 	if err != nil {
-		panic(err)
+		return
 	}
 	// we resolve generic type params -> canonical types (in the context of the
 	// parent ctx)
-	childCtx := file.newGenericCallCtx(decl, expr, parentCtx)
+	childCtx, err := file.newGenericCallCtx(decl, expr, parentCtx)
+	if err != nil {
+		return
+	}
 	source.renderCanonType(decl.Type, out, childCtx)
+	return
 }
 
 type Generator struct {
@@ -348,7 +355,10 @@ func NewGenerator(include iter.Seq[string]) (gen *Generator, err error) {
 		if err != nil {
 			return
 		}
-		gen.Files[path] = gen.newFile(path, code)
+		gen.Files[path], err = gen.newFile(path, code)
+		if err != nil {
+			return
+		}
 	}
 
 	return
@@ -356,14 +366,16 @@ func NewGenerator(include iter.Seq[string]) (gen *Generator, err error) {
 
 var modNameNotAllowed = regexp.MustCompile(`[^A-Za-z\d]`)
 
-func deriveModuleName(filename string) string {
+func deriveModuleName(filename string) (out string, err error) {
 	if !strings.HasSuffix(filename, ".nu") {
-		panic(fmt.Errorf("invalid file: '%v' must have extension .nu", filename))
+		err = fmt.Errorf("invalid file: '%v' must have extension .nu", filename)
+		return
 	}
-	return modNameNotAllowed.ReplaceAllLiteralString(filename[:len(filename)-3], "")
+	out = modNameNotAllowed.ReplaceAllLiteralString(filename[:len(filename)-3], "")
+	return
 }
 
-func (g *Generator) newFile(path string, code []byte) (file File) {
+func (g *Generator) newFile(path string, code []byte) (file File, err error) {
 	tree := g.parser.Parse(code, nil)
 	treeCursor := tree.Walk()
 
@@ -382,6 +394,10 @@ func (g *Generator) newFile(path string, code []byte) (file File) {
 	// for debug:
 	// visitTS.code = code
 	visitTS.Do()
+	err = visitor.Err()
+	if err != nil {
+		return
+	}
 
 	file.Annots = visitor.AnnotsOrdered()
 
@@ -390,15 +406,18 @@ func (g *Generator) newFile(path string, code []byte) (file File) {
 	}
 	for _, use := range visitor.UseDecls {
 		var relPath string
-		err := json.Unmarshal([]byte(use.Filename), &relPath)
+		err = json.Unmarshal([]byte(use.Filename), &relPath)
 		if err != nil {
-			panic(err)
+			return
 		}
-		modname := deriveModuleName(filepath.Base(relPath))
+		var modname string
+		modname, err = deriveModuleName(filepath.Base(relPath))
+		if err != nil {
+			return
+		}
 		file.UseDecls[modname] = relPath
 	}
-
-	return file
+	return
 }
 
 func isBuiltinType(id []string) bool {

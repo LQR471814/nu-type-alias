@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"log"
 	"nu-type-alias/internal/grammar"
 	"nu-type-alias/internal/tsquery"
 	"regexp"
@@ -99,6 +99,7 @@ func (c CmdTypeAnnot) IOTargetRange() tsquery.ByteRange {
 
 type AnnotationVisitor struct {
 	code          []byte
+	errs          []error
 	TypeDecls     []grammar.TypeDecl
 	UseDecls      []grammar.UseDecl
 	CmdAnnots     []CmdTypeAnnot
@@ -108,6 +109,10 @@ type AnnotationVisitor struct {
 
 func NewAnnotationVisitor(code []byte) *AnnotationVisitor {
 	return &AnnotationVisitor{code: code}
+}
+
+func (v *AnnotationVisitor) Err() error {
+	return errors.Join(v.errs...)
 }
 
 func (v *AnnotationVisitor) AnnotsOrdered() []Annot {
@@ -137,7 +142,8 @@ func (v *AnnotationVisitor) VisitLoneComment(span tsquery.ByteRange) {
 	var out []grammar.Stmt
 	err := parseStatements(v.code[span.Start:span.End], &out)
 	if err != nil {
-		panic(err)
+		v.errs = append(v.errs, err)
+		return
 	}
 	for _, stmt := range out {
 		switch stmt := stmt.(type) {
@@ -148,11 +154,14 @@ func (v *AnnotationVisitor) VisitLoneComment(span tsquery.ByteRange) {
 		case grammar.ParamTypeAnnotation:
 			// TODO: add better error handling here later
 		default:
-			log.Printf(
-				"got unexpected statement %T in comment that is neither command nor variable annotation\n%v\n",
-				stmt,
-				string(v.code[span.Start:span.End]),
+			v.errs = append(v.errs,
+				fmt.Errorf(
+					"got unexpected statement %T in comment that is neither command nor variable annotation\n%v\n",
+					stmt,
+					string(v.code[span.Start:span.End]),
+				),
 			)
+			return
 		}
 	}
 }
@@ -161,19 +170,22 @@ func (v *AnnotationVisitor) VisitCmdComment(span tsquery.ByteRange, cmd *tree_si
 	var stmts []grammar.Stmt
 	err := parseStatements(v.code[span.Start:span.End], &stmts)
 	if err != nil {
-		panic(err)
+		v.errs = append(v.errs, err)
+		return
 	}
 	out := CmdTypeAnnot{Cmd: cmd}
 	for _, stmt := range stmts {
 		switch stmt := stmt.(type) {
 		case grammar.InputTypeAnnotation:
 			if out.Input != nil {
-				panic(fmt.Errorf("got multiple @input type annotations"))
+				v.errs = append(v.errs, fmt.Errorf("got multiple @input type annotations"))
+				return
 			}
 			out.Input = &stmt
 		case grammar.OutputTypeAnnotation:
 			if out.Output != nil {
-				panic(fmt.Errorf("got multiple @output type annotations"))
+				v.errs = append(v.errs, fmt.Errorf("got multiple @output type annotations"))
+				return
 			}
 			out.Output = &stmt
 		case grammar.ParamTypeAnnotation:
@@ -183,11 +195,14 @@ func (v *AnnotationVisitor) VisitCmdComment(span tsquery.ByteRange, cmd *tree_si
 		case grammar.TypeDecl:
 			v.TypeDecls = append(v.TypeDecls, stmt)
 		default:
-			log.Printf(
-				"got unexpected statement %T in command\n%v\n",
-				stmt,
-				string(v.code[span.Start:span.End]),
+			v.errs = append(v.errs,
+				fmt.Errorf(
+					"got unexpected statement %T in command\n%v\n",
+					stmt,
+					string(v.code[span.Start:span.End]),
+				),
 			)
+			return
 		}
 	}
 	v.CmdAnnots = append(v.CmdAnnots, out)
@@ -198,7 +213,8 @@ func (v *AnnotationVisitor) VisitClosureHeader(span tsquery.ByteRange, closure *
 	var stmts []grammar.Stmt
 	err := parseStatements(v.code[span.Start:span.End], &stmts)
 	if err != nil {
-		panic(err)
+		v.errs = append(v.errs, err)
+		return
 	}
 	out := ClosureTypeAnnot{Closure: closure}
 	for _, stmt := range stmts {
@@ -213,11 +229,14 @@ func (v *AnnotationVisitor) VisitClosureHeader(span tsquery.ByteRange, closure *
 			// we do nothing here because VarTypeComment will be picked up by
 			// VisitVarComment later
 		default:
-			log.Printf(
-				"got unexpected statement %T\n%v\n",
-				stmt,
-				string(v.code[span.Start:span.End]),
+			v.errs = append(v.errs,
+				fmt.Errorf(
+					"got unexpected statement %T\n%v\n",
+					stmt,
+					string(v.code[span.Start:span.End]),
+				),
 			)
+			return
 		}
 	}
 	v.ClosureAnnots = append(v.ClosureAnnots, out)
@@ -228,14 +247,16 @@ func (v *AnnotationVisitor) VisitVarComment(span tsquery.ByteRange, variable *tr
 	var stmts []grammar.Stmt
 	err := parseStatements(v.code[span.Start:span.End], &stmts)
 	if err != nil {
-		panic(err)
+		v.errs = append(v.errs, err)
+		return
 	}
 	var typeAnnot *VarTypeAnnot
 	for _, stmt := range stmts {
 		switch stmt := stmt.(type) {
 		case grammar.VarTypeAnnot:
 			if typeAnnot != nil {
-				panic(fmt.Errorf("got multiple @type annotations"))
+				v.errs = append(v.errs, fmt.Errorf("got multiple @type annotations"))
+				return
 			}
 			typeAnnot = &VarTypeAnnot{
 				Annot: stmt,
@@ -246,7 +267,10 @@ func (v *AnnotationVisitor) VisitVarComment(span tsquery.ByteRange, variable *tr
 		case grammar.TypeDecl:
 			v.TypeDecls = append(v.TypeDecls, stmt)
 		default:
-			panic(fmt.Errorf("got unexpected statement %T", stmt))
+			v.errs = append(v.errs,
+				fmt.Errorf("got unexpected statement %T", stmt),
+			)
+			return
 		}
 	}
 	if typeAnnot != nil {
@@ -307,7 +331,7 @@ func parseStatements(code []byte, out *[]grammar.Stmt) (err error) {
 		// lexer return EOF otherwise)
 		lex, err = lexDef.Lex("in", bytes.NewBuffer(code[pos:]))
 		if err != nil {
-			panic(err)
+			return
 		}
 
 		// peek.Cursor() > 0 when something is actually parsed
