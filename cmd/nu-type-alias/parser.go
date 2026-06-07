@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"nu-type-alias/internal/grammar"
 	"nu-type-alias/internal/tsquery"
 	"regexp"
@@ -144,8 +145,14 @@ func (v *AnnotationVisitor) VisitLoneComment(span tsquery.ByteRange) {
 			v.UseDecls = append(v.UseDecls, stmt)
 		case grammar.TypeDecl:
 			v.TypeDecls = append(v.TypeDecls, stmt)
+		case grammar.ParamTypeAnnotation:
+			// TODO: add better error handling here later
 		default:
-			panic(fmt.Errorf("got unexpected statement %T", stmt))
+			log.Printf(
+				"got unexpected statement %T in comment that is neither command nor variable annotation\n%v\n",
+				stmt,
+				string(v.code[span.Start:span.End]),
+			)
 		}
 	}
 }
@@ -176,7 +183,11 @@ func (v *AnnotationVisitor) VisitCmdComment(span tsquery.ByteRange, cmd *tree_si
 		case grammar.TypeDecl:
 			v.TypeDecls = append(v.TypeDecls, stmt)
 		default:
-			panic(fmt.Errorf("got unexpected statement %T", stmt))
+			log.Printf(
+				"got unexpected statement %T in command\n%v\n",
+				stmt,
+				string(v.code[span.Start:span.End]),
+			)
 		}
 	}
 	v.CmdAnnots = append(v.CmdAnnots, out)
@@ -202,7 +213,11 @@ func (v *AnnotationVisitor) VisitClosureHeader(span tsquery.ByteRange, closure *
 			// we do nothing here because VarTypeComment will be picked up by
 			// VisitVarComment later
 		default:
-			panic(fmt.Errorf("got unexpected statement %T", stmt))
+			log.Printf(
+				"got unexpected statement %T\n%v\n",
+				stmt,
+				string(v.code[span.Start:span.End]),
+			)
 		}
 	}
 	v.ClosureAnnots = append(v.ClosureAnnots, out)

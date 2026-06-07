@@ -36,10 +36,10 @@ func visitCommentBlocks(
 	cursor *tree_sitter.TreeCursor,
 	visitor commentBlockVisitor,
 ) {
-	children := node.NamedChildren(cursor)
-
 	var prevComment *int
+	children := node.NamedChildren(cursor)
 	for i, child := range children {
+		visitCommentBlocks(&child, cursor, visitor)
 		if child.GrammarName() == "comment" {
 			if prevComment == nil {
 				prevComment = &i
