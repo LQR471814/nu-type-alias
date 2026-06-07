@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -217,13 +218,8 @@ func (file File) genClosureParamAnnots(c ClosureTypeAnnot, w *skipWriter) {
 func (file File) Generate(out io.Writer) (err error) {
 	defer func() {
 		recovered := recover()
-		switch recovered := recovered.(type) {
-		case nil:
-			err = nil
-		case error:
-			err = fmt.Errorf("%v: %w", file.Path, recovered)
-		default:
-			err = fmt.Errorf("%v: %v", file.Path, recovered)
+		if recovered != nil {
+			err = fmt.Errorf("%v", recovered)
 		}
 	}()
 
@@ -357,6 +353,7 @@ func NewGenerator(include iter.Seq[string]) (gen *Generator, err error) {
 		}
 		gen.Files[path], err = gen.newFile(path, code)
 		if err != nil {
+			err = fmt.Errorf("new file %v: %v", path, err)
 			return
 		}
 	}
@@ -396,7 +393,8 @@ func (g *Generator) newFile(path string, code []byte) (file File, err error) {
 	visitTS.Do()
 	err = visitor.Err()
 	if err != nil {
-		return
+		// visitor errs are largely syntax warnings, successful parses will get through
+		log.Println("warn:", err)
 	}
 
 	file.Annots = visitor.AnnotsOrdered()
@@ -459,6 +457,7 @@ func (g *Generator) genFile(path string, file File) (err error) {
 
 	err = file.Generate(f)
 	if err != nil {
+		err = fmt.Errorf("gen file %v: %v", path, err)
 		f.Truncate(0)
 		f.Seek(0, 0)
 		f.Write(file.Code)
