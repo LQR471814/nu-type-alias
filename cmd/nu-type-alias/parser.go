@@ -250,6 +250,9 @@ var commentPrefix = regexp.MustCompile(`(?m)^[ \t]*# *`)
 // this allows for type aliases to live alongside regular text in comment
 // blocks
 func parseStatements(code []byte, out *[]grammar.Stmt) (err error) {
+	// for debug:
+	// fmt.Println(string(code))
+
 	code = commentPrefix.ReplaceAllLiteral(code, []byte(""))
 
 	lexDef := lexer.TextScannerLexer // default lex.Definition

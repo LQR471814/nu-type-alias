@@ -1,29 +1,132 @@
 package main
 
 import (
+	"fmt"
 	"nu-type-alias/internal/tsquery"
 
 	tree_sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
-type nodeVisitor interface {
+type nodeByNameVisitor interface {
+	VisitNamedNode(node *tree_sitter.Node)
+}
+
+func visitNodeByName(
+	node *tree_sitter.Node,
+	cursor *tree_sitter.TreeCursor,
+	name string,
+	visitor nodeByNameVisitor,
+) {
+	if node.GrammarName() == name {
+		visitor.VisitNamedNode(node)
+		return
+	}
+	for _, child := range node.NamedChildren(cursor) {
+		visitNodeByName(&child, cursor, name, visitor)
+	}
+}
+
+type commentBlockVisitor interface {
+	// comments in the block span children of index [start, end)
+	VisitBlock(parent *tree_sitter.Node, start, end int)
+}
+
+func visitCommentBlocks(
+	node *tree_sitter.Node,
+	cursor *tree_sitter.TreeCursor,
+	visitor commentBlockVisitor,
+) {
+	children := node.NamedChildren(cursor)
+
+	var prevComment *int
+	for i, child := range children {
+		if child.GrammarName() == "comment" {
+			if prevComment == nil {
+				prevComment = &i
+			}
+			continue
+		}
+		if prevComment != nil {
+			visitor.VisitBlock(node, *prevComment, i)
+			prevComment = nil
+		}
+	}
+	if prevComment != nil {
+		visitor.VisitBlock(node, *prevComment, len(children))
+	}
+}
+
+type tsNodeVisitor interface {
 	VisitLoneComment(span tsquery.ByteRange)
 	VisitCmdComment(span tsquery.ByteRange, cmd *tree_sitter.Node)
 	VisitClosureHeader(span tsquery.ByteRange, closure *tree_sitter.Node)
 	VisitVarComment(span tsquery.ByteRange, variable *tree_sitter.Node)
 }
 
-func visitClosure(node *tree_sitter.Node, cursor *tree_sitter.TreeCursor, visitor nodeVisitor) {
+type visitTSNode struct {
+	root    *tree_sitter.Node
+	cursor  *tree_sitter.TreeCursor
+	visitor tsNodeVisitor
+	code    []byte
+}
+
+func newVisitTSNode(
+	root *tree_sitter.Node,
+	cursor *tree_sitter.TreeCursor,
+	visitor tsNodeVisitor,
+) visitTSNode {
+	return visitTSNode{
+		root:    root,
+		cursor:  cursor,
+		visitor: visitor,
+	}
+}
+
+func (b visitTSNode) Do() {
+	visitCommentBlocks(b.root, b.cursor, b)
+	visitNodeByName(b.root, b.cursor, "val_closure", b)
+}
+
+func (b visitTSNode) VisitBlock(parent *tree_sitter.Node, start, end int) {
+	children := parent.NamedChildren(b.cursor)
+	startNode := children[start]
+	endNode := children[end-1]
+
+	rng := tsquery.NewByteRange(0, 0)
+	rng.Start, _ = startNode.ByteRange()
+	_, rng.End = endNode.ByteRange()
+
+	if b.code != nil {
+		fmt.Println(string(b.code[rng.Start:rng.End]))
+	}
+
+	// if no next node
+	if end >= len(children) {
+		b.visitor.VisitLoneComment(rng)
+		return
+	}
+
+	nextNode := children[end]
+	switch nextNode.GrammarName() {
+	case "decl_def":
+		b.visitor.VisitCmdComment(rng, &nextNode)
+	case "stmt_let", "stmt_mut":
+		b.visitor.VisitVarComment(rng, &nextNode)
+	default:
+		b.visitor.VisitLoneComment(rng)
+	}
+}
+
+func (b visitTSNode) VisitNamedNode(node *tree_sitter.Node) {
 	if node.GrammarName() != "val_closure" {
 		panic("assert failed: visitClosure must be called with node.GrammarName == val_closure")
 	}
-	// we capture the range of comments at the start of a closure
-	named := node.NamedChildren(cursor)
-	if named[0].GrammarName() == "parameter_pipes" {
-		named = named[1:]
+	children := node.NamedChildren(b.cursor)
+	if children[0].GrammarName() == "parameter_pipes" {
+		children = children[1:]
 	}
 	var span *tsquery.ByteRange
-	for _, child := range named {
+	for _, child := range children {
 		if child.GrammarName() != "comment" {
 			break
 		}
@@ -38,44 +141,5 @@ func visitClosure(node *tree_sitter.Node, cursor *tree_sitter.TreeCursor, visito
 	if span == nil {
 		return
 	}
-	visitor.VisitClosureHeader(*span, node)
-}
-
-func visitComments(node *tree_sitter.Node, cursor *tree_sitter.TreeCursor, visitor nodeVisitor) {
-	if node.GrammarName() == "val_closure" {
-		visitClosure(node, cursor, visitor)
-	}
-
-	children := node.Children(cursor)
-
-	var startComment *tsquery.ByteRange
-	for i, child := range children {
-		visitComments(&child, cursor, visitor)
-
-		if child.GrammarName() != "comment" {
-			startComment = nil
-			continue
-		}
-
-		totalRange := tsquery.NewByteRange(child.ByteRange())
-
-		if startComment == nil {
-			startComment = &totalRange
-		} else {
-			totalRange.Start = startComment.Start
-		}
-
-		if i >= len(children)-1 {
-			visitor.VisitLoneComment(totalRange)
-			break
-		}
-
-		next := children[i+1]
-		switch next.GrammarName() {
-		case "decl_def":
-			visitor.VisitCmdComment(totalRange, &next)
-		case "stmt_let", "stmt_mut":
-			visitor.VisitVarComment(totalRange, &next)
-		}
-	}
+	b.visitor.VisitClosureHeader(*span, node)
 }

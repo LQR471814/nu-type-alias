@@ -378,7 +378,10 @@ func (g *Generator) newFile(path string, code []byte) (file File) {
 	}
 
 	visitor := NewAnnotationVisitor(code)
-	visitComments(file.tree.RootNode(), treeCursor, visitor)
+	visitTS := newVisitTSNode(file.tree.RootNode(), treeCursor, visitor)
+	// for debug:
+	// visitTS.code = code
+	visitTS.Do()
 
 	file.Annots = visitor.AnnotsOrdered()
 
