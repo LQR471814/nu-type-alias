@@ -8,7 +8,12 @@
 # @param foo record
 # @param bar bool
 def bar [--scale(-s) -f -b --foo --bar] {
-	$in
+	# @type PERT<int>
+	let input = $in
+	do {||
+		# @type PERT<float>
+		let output = {}
+	}
 }
 
 # type Container<Elem> = table<
