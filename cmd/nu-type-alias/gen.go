@@ -413,6 +413,11 @@ func (g *Generator) newFile(path string, code []byte) (file File, err error) {
 		if err != nil {
 			return
 		}
+		_, exist := file.UseDecls[modname]
+		if exist {
+			err = fmt.Errorf("duplicate module by name '%s' already exists", modname)
+			return
+		}
 		file.UseDecls[modname] = relPath
 	}
 	return
