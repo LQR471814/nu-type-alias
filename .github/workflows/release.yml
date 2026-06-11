@@ -57,12 +57,13 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: |
           go build -v -o nu-type-alias-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./cmd/nu-type-alias
+          go build -v -o nu-type-fmt-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./cmd/nu-type-fmt
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nu-type-alias-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: nu-type-alias-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+          name: nu-type-*-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: nu-type-*-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
 
   release:
     name: Create GitHub Release
