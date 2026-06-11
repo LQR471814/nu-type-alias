@@ -1,6 +1,6 @@
 {
   inputs = {
-    self.submodules = true;
+    # self.submodules = true;
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
   outputs =
@@ -16,28 +16,47 @@
       };
     in
     {
-      packages.${system}.default = pkgs.buildGoModule {
-        pname = "nu-type-alias";
-        version = "0.2.16";
+      packages.${system} = {
+        default = pkgs.buildGoModule {
+          pname = "nu-type-alias";
+          version = "0.2.16";
 
-        src = ./.;
+          src = ./.;
 
-        vendorHash = "sha256-vqvsMkB0T41XZ0/lj7MbNXUdL4612ThPbqq5rSkjSrM=";
-        # sourceRoot = "${./.}/cmd/nu-type-alias";
-        subPackages = [ "cmd/nu-type-alias" ];
-        meta = {
-          mainProgram = "nu-type-alias";
+          vendorHash = "sha256-vqvsMkB0T41XZ0/lj7MbNXUdL4612ThPbqq5rSkjSrM=";
+          subPackages = [ "cmd/nu-type-alias" ];
+          meta = {
+            mainProgram = "nu-type-alias";
+          };
+
+          preBuild = ''
+            export CGO_CFLAGS="-I${tree-sitter-src}/lib/include -I${tree-sitter-src}/lib/src $CGO_CFLAGS"
+            export CGO_LDFLAGS="$CGO_LDFLAGS"
+          '';
         };
+        nu-type-fmt = pkgs.buildGoModule {
+          pname = "nu-type-fmt";
+          version = "0.1.0";
 
-        preBuild = ''
-          export CGO_CFLAGS="-I${tree-sitter-src}/lib/include -I${tree-sitter-src}/lib/src $CGO_CFLAGS"
-          export CGO_LDFLAGS="$CGO_LDFLAGS"
-        '';
+          src = ./.;
+
+          vendorHash = "sha256-vqvsMkB0T41XZ0/lj7MbNXUdL4612ThPbqq5rSkjSrM=";
+          subPackages = [ "cmd/nu-type-fmt" ];
+          meta = {
+            mainProgram = "nu-type-fmt";
+          };
+        };
       };
 
-      apps.${system}.default = {
-        type = "app";
-        program = "${self.packages.${system}.default}/bin/nu-type-alias";
+      apps.${system} = {
+        default = {
+          type = "app";
+          program = "${self.packages.${system}.default}/bin/nu-type-alias";
+        };
+        nu-type-fmt = {
+          type = "app";
+          program = "${self.packages.${system}.default}/bin/nu-type-fmt";
+        };
       };
 
       devShells.${system}.default = pkgs.mkShell {

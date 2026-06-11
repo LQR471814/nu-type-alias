@@ -214,5 +214,82 @@ ls **/*.nu
 ## Building
 
 1. Clone with submodules included.
-2. Build with `CGO_ENABLED=1`
+2. Build `./cmd/nu-type-alias` with `CGO_ENABLED=1`
+
+# nu-type-fmt
+
+This project also contains a small helper binary that can format
+nushell type expressions into a nicer format.
+
+## Usage
+
+The type expression (ex. `record<...>`) should be passed into
+the STDIN of the command, which will output the formatted string
+in STDOUT.
+
+```
+Usage of nu-type-fmt:
+  -indent string
+    	The indent to use. (default "  ")
+  -max-subtree int
+    	The maximum size of a type subtree (including the root) that may be present on a single line. (default 3)
+```
+
+Here is an example input and output (with `-max-subtree 7`).
+
+```
+record<id: oneof<nothing, int>, profile_id: oneof<nothing, int>, state: oneof<nothing, record<name: oneof<nothing, string>, desc: oneof<nothing, string>, timescale: oneof<nothing, int>, duration_cfg: oneof<nothing, record<pert: oneof<nothing, record<pes: oneof<nothing, duration>, exp: oneof<nothing, duration>, opt: oneof<nothing, duration>>>, deadline: oneof<nothing, datetime>, total_cost: oneof<nothing, int>>>, children_cfgs: list<record<desc: oneof<nothing, string>, deadline: oneof<nothing, datetime>, exp_cost: oneof<nothing, int>, children: list<record<id: oneof<nothing, int>, name: oneof<nothing, string>>>>>, prereqs: list<record<id: oneof<nothing, int>, name: oneof<nothing, string>>>, postreqs: list<record<id: oneof<nothing, int>, name: oneof<nothing, string>>>, parent: oneof<nothing, record<id: oneof<nothing, int>, name: oneof<nothing, string>>>, start: oneof<nothing, datetime>, end: oneof<nothing, datetime>>>>
+```
+
+```
+record<
+  id: oneof<nothing, int>
+  profile_id: oneof<nothing, int>
+  state: oneof<
+    nothing
+    record<
+      name: oneof<nothing, string>
+      desc: oneof<nothing, string>
+      timescale: oneof<nothing, int>
+      duration_cfg: oneof<
+        nothing
+        record<
+          pert: oneof<
+            nothing
+            record<
+              pes: oneof<nothing, duration>
+              exp: oneof<nothing, duration>
+              opt: oneof<nothing, duration>
+            >
+          >
+          deadline: oneof<nothing, datetime>
+          total_cost: oneof<nothing, int>
+        >
+      >
+      children_cfgs: list<
+        record<
+          desc: oneof<nothing, string>
+          deadline: oneof<nothing, datetime>
+          exp_cost: oneof<nothing, int>
+          children: list<
+            record<id: oneof<nothing, int>, name: oneof<nothing, string>>
+          >
+        >
+      >
+      prereqs: list<
+        record<id: oneof<nothing, int>, name: oneof<nothing, string>>
+      >
+      postreqs: list<
+        record<id: oneof<nothing, int>, name: oneof<nothing, string>>
+      >
+      parent: oneof<
+        nothing
+        record<id: oneof<nothing, int>, name: oneof<nothing, string>>
+      >
+      start: oneof<nothing, datetime>
+      end: oneof<nothing, datetime>
+    >
+  >
+>
+```
 
